@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([sq3pp], [1.0.0], [])
+AC_INIT([sq3pp], [1.0.1], [])
 AC_CONFIG_SRCDIR([src/Database.cpp])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])

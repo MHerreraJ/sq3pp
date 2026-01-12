@@ -1,2 +1,47 @@
+# Build artifacts
 /build/
 *.db
+*.o
+*.lo
+*.la
+.deps/
+.libs/
+
+# Autoreconf generated files
+aclocal.m4
+ar-lib
+compile
+config.guess
+config.sub
+configure
+depcomp
+install-sh
+ltmain.sh
+missing
+Makefile.in
+
+# Libtool m4 macros
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4
+
+# Configure generated files
+config.h
+config.h.in
+config.log
+config.status
+stamp-h1
+libtool
+Makefile
+
+# Backup files
+*~
+*.swp
+*.swo
+
+# pkg-config files
+*.pc
+/autom4te.cache/
+/example/example

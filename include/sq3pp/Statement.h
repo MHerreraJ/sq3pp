@@ -1,6 +1,7 @@
 #ifndef SQ3PP_STATEMENT_H
 #define SQ3PP_STATEMENT_H
 
+#include <cstdint>
 #include <memory>
 #include <iostream>
 #include <functional>

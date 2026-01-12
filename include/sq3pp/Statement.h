@@ -22,6 +22,7 @@ class CellValue{
     public:
     CellValue();
     CellValue(int iValue);
+    CellValue(int64_t iValue);
     CellValue(double dValue);
     CellValue(const std::string& strValue);
     CellValue(const char* cstrValue);
@@ -50,7 +51,7 @@ class CellValue{
     protected:
     Type _type;
     union{
-        int _iValue;
+        int64_t _i64Value;
         double _dValue;
         char* _strValue;
         struct{
@@ -156,6 +157,7 @@ class Statement{
         Binder& operator=(const Binder& other) = delete;
         Binder& operator=(Binder&& other) = delete;
         Binder& operator=(int value);
+        Binder& operator=(int64_t value);
         Binder& operator=(double value);
         Binder& operator=(const std::string& value);
         Binder& operator=(const char* value);
@@ -187,6 +189,7 @@ class Statement{
     Statement& bind(const std::string& value, int index = -1);
     Statement& bind(const char* value, int index = -1);
     Statement& bind(int value, int index = -1);
+    Statement& bind(int64_t value, int index = -1);
     Statement& bind(double value, int index = -1);
     Statement& bind(std::nullptr_t, int index = -1);
     Statement& bind(void* blob_value, int n, int index = -1);
@@ -203,6 +206,7 @@ class Statement{
     Statement& bindById(const std::string& id, const char* value);
     Statement& bindById(const std::string& id, std::nullptr_t);
     Statement& bindById(const std::string& id, int value);
+    Statement& bindById(const std::string& id, int64_t value);
     Statement& bindById(const std::string& id, double value);
     Statement& bindById(const std::string& id, void* blob_value, int n);
     Statement& bindById(const std::string& id, const std::vector<uint8_t>& blob_value);

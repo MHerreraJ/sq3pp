@@ -8,7 +8,8 @@ template<>
 CellValue Row::Cell::valueAs<CellValue>(bool autoConvert) const;
 
 CellValue::CellValue() : _type(Type::NULLTYPE), _blobValue{nullptr, 0} {}
-CellValue::CellValue(int iValue) : _type(Type::INTEGER), _iValue(iValue) {}
+CellValue::CellValue(int iValue) : _type(Type::INTEGER), _i64Value(iValue) {}
+CellValue::CellValue(int64_t iValue) : _type(Type::INTEGER), _i64Value(iValue) {}
 CellValue::CellValue(double dValue) : _type(Type::DOUBLE), _dValue(dValue) {}
 CellValue::CellValue(const std::string& strValue) : _type(Type::TEXT) {
     _strValue = new char[strValue.size() + 1];
@@ -43,7 +44,7 @@ CellValue::~CellValue() {
 CellValue::CellValue(const CellValue& other):_type(other._type), _blobValue{nullptr, 0} {
     switch(_type){
         case Type::INTEGER:
-            _iValue = other._iValue;
+            _i64Value = other._i64Value;
             break;
         case Type::DOUBLE:
             _dValue = other._dValue;
@@ -67,7 +68,7 @@ CellValue::CellValue(const CellValue& other):_type(other._type), _blobValue{null
 CellValue::CellValue( CellValue&& other) noexcept : _type(other._type), _blobValue{nullptr, 0} {
     switch(_type){
         case Type::INTEGER:
-            _iValue = other._iValue;
+            _i64Value = other._i64Value;
             break;
         case Type::DOUBLE:
             _dValue = other._dValue;
@@ -96,7 +97,7 @@ CellValue& CellValue::operator=(const CellValue& other) {
         _type = other._type;
         switch(_type){
             case Type::INTEGER:
-                _iValue = other._iValue;
+                _i64Value = other._i64Value;
                 break;
             case Type::DOUBLE:
                 _dValue = other._dValue;
@@ -127,7 +128,7 @@ CellValue& CellValue::operator=( CellValue&& other) noexcept {
         _type = other._type;
         switch(_type){
             case Type::INTEGER:
-                _iValue = other._iValue;
+                _i64Value = other._i64Value;
                 break;
             case Type::DOUBLE:
                 _dValue = other._dValue;
@@ -153,7 +154,7 @@ CellValue& CellValue::operator=( CellValue&& other) noexcept {
 template<>
 int CellValue::valueAs<int>() const {
     if(_type == Type::INTEGER){
-        return _iValue;
+        return static_cast<int>(_i64Value);
     } else if(_type == Type::DOUBLE){
         return static_cast<int>(_dValue);
     } else if(_type == Type::TEXT){
@@ -163,11 +164,23 @@ int CellValue::valueAs<int>() const {
 }
 
 template<>
+int64_t CellValue::valueAs<int64_t>() const {
+    if(_type == Type::INTEGER){
+        return _i64Value;
+    } else if(_type == Type::DOUBLE){
+        return static_cast<int64_t>(_dValue);
+    } else if(_type == Type::TEXT){
+        return static_cast<int64_t>(std::stoll(_strValue));
+    }
+    return 0;
+}
+
+template<>
 double CellValue::valueAs<double>() const {
     if(_type == Type::DOUBLE){
         return _dValue;
     } else if(_type == Type::INTEGER){
-        return static_cast<double>(_iValue);
+        return static_cast<double>(_i64Value);
     } else if(_type == Type::TEXT){
         return std::stod(_strValue);
     }
@@ -179,7 +192,7 @@ std::string CellValue::valueAs<std::string>() const {
     if(_type == Type::TEXT){
         return std::string(_strValue);
     } else if(_type == Type::INTEGER){
-        return std::to_string(_iValue);
+        return std::to_string(_i64Value);
     } else if(_type == Type::DOUBLE){
         return std::to_string(_dValue);
     }
@@ -189,8 +202,8 @@ std::string CellValue::valueAs<std::string>() const {
 template<>
 std::vector<uint8_t> CellValue::valueAs<std::vector<uint8_t>>() const {
     if(_type == Type::INTEGER){
-        std::vector<uint8_t> vec(sizeof(int));
-        std::memcpy(vec.data(), &_iValue, sizeof(int));
+        std::vector<uint8_t> vec(sizeof(int64_t));
+        std::memcpy(vec.data(), &_i64Value, sizeof(int64_t));
         return vec;
     } else if(_type == Type::DOUBLE){
         std::vector<uint8_t> vec(sizeof(double));
@@ -209,7 +222,7 @@ std::vector<uint8_t> CellValue::valueAs<std::vector<uint8_t>>() const {
 std::ostream& operator<<(std::ostream& os, const CellValue& cellValue){
     switch(cellValue.valueType()){
         case CellValue::Type::INTEGER:
-            os << cellValue.valueAs<int>();
+            os << cellValue.valueAs<int64_t>();
             break;
         case CellValue::Type::DOUBLE:
             os << cellValue.valueAs<double>();
@@ -238,6 +251,16 @@ Statement::Binder& Statement::Binder::operator=(int value) {
     }
     return *this;
 }
+
+Statement::Binder& Statement::Binder::operator=(int64_t value) {
+    if(_index < 0){
+        parentStmt.bindById(_id, value);
+    } else {
+        parentStmt.bind(value, _index);
+    }
+    return *this;
+}
+
 Statement::Binder& Statement::Binder::operator=(double value) {
     if(_index < 0){
         parentStmt.bindById(_id, value);
@@ -406,6 +429,22 @@ Statement& Statement::bind(int value, int index) {
     return *this;
 }
 
+Statement& Statement::bind(int64_t value, int index) {
+    if(!isValid()){
+        throw DatabaseException(SQ3::NOMEM, "Cannot bind value: statement is not valid.");
+    }
+    if(index >= 0){
+        _bindIndex = index + 1; // SQLite parameters are 1-based
+    }
+    int rc = sqlite3_bind_int64(_stmt.get(), _bindIndex++, value);
+    if(rc != SQLITE_OK){
+        const char* errMsg = sqlite3_errmsg(sqlite3_db_handle(_stmt.get()));
+        if(!errMsg) errMsg = sqlite3_errstr(rc);
+        throw DatabaseException(static_cast<SQ3>(rc), errMsg);
+    }
+    return *this;
+}
+
 Statement& Statement::bind(double value, int index) {
     if(!isValid()){
         throw DatabaseException(SQ3::NOMEM, "Cannot bind value: statement is not valid.");
@@ -466,7 +505,7 @@ Statement& Statement::bind(const CellValue& cellValue, int index) {
     }
     switch(cellValue.valueType()){
         case CellValue::Type::INTEGER:
-            return bind(cellValue.valueAs<int>(), index);
+            return bind(cellValue.valueAs<int64_t>(), index);
         case CellValue::Type::DOUBLE:
             return bind(cellValue.valueAs<double>(), index);
         case CellValue::Type::TEXT:
@@ -501,6 +540,13 @@ Statement& Statement::bindById(const std::string& id, std::nullptr_t) {
     return bind(nullptr, index);
 }
 Statement& Statement::bindById(const std::string& id, int value) {
+    int index = getIndexForId(id);
+    if(index < 0) {
+        throw DatabaseException(SQ3::MISUSE, "Parameter name not found: " + id);
+    }
+    return bind(value, index);
+}
+Statement& Statement::bindById(const std::string& id, int64_t value) {
     int index = getIndexForId(id);
     if(index < 0) {
         throw DatabaseException(SQ3::MISUSE, "Parameter name not found: " + id);
@@ -739,6 +785,17 @@ int Row::Cell::valueAs<int>(bool autoConvert) const {
 }
 
 template<>
+int64_t Row::Cell::valueAs<int64_t>(bool autoConvert) const {
+    if(isNull() || !_parent || _column < 0){
+        throw DatabaseException(SQ3::MISUSE, "Cannot retrieve value: invalid cell.");
+    }
+    if(!autoConvert && _type != SQLITE_INTEGER){
+        throw DatabaseException(SQ3::MISUSE, "Cannot retrieve value: type mismatch.");
+    }
+    return sqlite3_column_int64(_parent->_stmt.get(), _column);
+}
+
+template<>
 double Row::Cell::valueAs<double>(bool autoConvert) const {
     if(isNull() || !_parent || _column < 0){
         throw DatabaseException(SQ3::MISUSE, "Cannot retrieve value: invalid cell.");
@@ -776,7 +833,7 @@ CellValue Row::Cell::valueAs<CellValue>(bool autoConvert) const {
 
     switch(_type){
         case SQLITE_INTEGER: {
-            int intValue = sqlite3_column_int(_parent->_stmt.get(), _column);
+            int64_t intValue = sqlite3_column_int64(_parent->_stmt.get(), _column);
             return CellValue(intValue);
         }
         case SQLITE_FLOAT: {
@@ -884,7 +941,7 @@ std::ostream& operator<<(std::ostream& os, const sq3pp::Row::Cell& cell){
     } else {
         switch(cell.valueType()){
             case SQLITE_INTEGER:
-                os << cell.valueAs<int>();
+                os << cell.valueAs<int64_t>();
                 break;
             case SQLITE_FLOAT:
                 os << cell.valueAs<double>();

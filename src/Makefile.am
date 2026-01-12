@@ -18,4 +18,4 @@ libsq3pp_la_LIBADD = -lsqlite3
 
 # Version info (current:revision:age)
 # See https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libsq3pp_la_LDFLAGS = -version-info 1:0:0
+libsq3pp_la_LDFLAGS = -version-info 1:2:0
